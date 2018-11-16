@@ -10,9 +10,9 @@ A Utility class to Clone and SObject &amp; it's children
 ## Usage
 
 ```java
-Lead leadToClone = //...
+Id leadIdToClone = '001232000000123'
 SObjectDeepClone leadClone = new SObjectDeepClone(
-    leadToClone,
+    leadIdToClone,
     new Set<String>{
         'Tasks'
     };
