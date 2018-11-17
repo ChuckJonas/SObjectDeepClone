@@ -1,6 +1,6 @@
 # SObjectDeepClone
 
-A Utility class to Clone and SObject &amp; it's children
+A Apex Utility class to Clone a Salesforce SObject &amp; and it's children.
 
 ## Install
 
