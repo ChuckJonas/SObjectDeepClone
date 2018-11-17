@@ -12,7 +12,7 @@ A Apex Utility class to Clone a Salesforce SObject &amp; and it's children.
 
 1: Initialize `SObjectDeepClone` with:
 
-- record Id of the object you want to clone
+- `Id` of the SObject you want to clone
 
 - `Set<String>` of any child relationships you want to clone
 
