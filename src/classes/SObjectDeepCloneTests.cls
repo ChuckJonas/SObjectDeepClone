@@ -1,5 +1,5 @@
 @isTest
-private class SObjectDeepCloneTest {
+private class SObjectDeepCloneTests {
 
 	@isTest static void accountWithContacts() {
 		Account acc = createAccount();
