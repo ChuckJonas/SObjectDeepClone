@@ -1,4 +1,5 @@
 # SObjectDeepClone
+
 A Utility class to Clone and SObject &amp; it's children
 
 ## Install
@@ -10,12 +11,19 @@ A Utility class to Clone and SObject &amp; it's children
 ## Usage
 
 ```java
-Id leadIdToClone = '001232000000123'
-SObjectDeepClone leadClone = new SObjectDeepClone(
+Id leadIdToClone = '00Q3A00001Q0wu7';
+SObjectDeepClone clone = new SObjectDeepClone(
     leadIdToClone,
     new Set<String>{
         'Tasks'
-    };
+    }
 );
-Lead clonedLead = (Lead) leadClone.save();
+Id clonedLeadId = clone.save();
+System.debug(clonedLeadId);
 ```
+
+## Considerations
+
+- This utility is not currently optimized for cloning multiple objects (My usecase was to replace the Standard Layout `Clone` button)
+- Currently limited to 5 relationships (due to SOQL query limit)
+- You might need update `SObjectDeepCloneTest` with your own custom object generators to get tests to pass.
