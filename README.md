@@ -39,6 +39,7 @@ System.debug(clonedLeadId);
 
 ## Considerations
 
+- It automatically clones all `createable` fields on both the parent and children objects (should be made configurable in future). 
 - This utility is not currently optimized for cloning multiple objects (My use-case was to replace the Standard Layout `Clone` button)
 - Currently limited to 5 relationships (due to SOQL query limit)
 - You might need update `SObjectDeepCloneTest` with your own custom object generators to get tests to pass.
