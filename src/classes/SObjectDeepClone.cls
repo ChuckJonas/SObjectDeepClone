@@ -91,8 +91,6 @@ public with sharing class SObjectDeepClone {
             'ID = \''+String.escapeSingleQuotes(toCloneId)+'\''
         );
 
-        System.debug(qry);
-
         return (SObject) Database.query(qry);
     }
 
