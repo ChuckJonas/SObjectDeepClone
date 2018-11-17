@@ -28,7 +28,7 @@ SObjectDeepClone cloner = new SObjectDeepClone(
     leadIdToClone,
     new Set<String>{
         'Tasks',
-		'Events'
+	'Events'
     }
 );
 Lead beforeClone = (Lead) cloner.clone;
