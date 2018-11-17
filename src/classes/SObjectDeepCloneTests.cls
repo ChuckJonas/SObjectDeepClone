@@ -16,29 +16,20 @@ private class SObjectDeepCloneTest {
         //pass opportunities just to test query gen on multiple children
         SObjectDeepClone cloner = new SObjectDeepClone(acc.Id, new Set<String>{'contacts', 'opportunities'});
         String cloneName = acc.name + ' Copy';
-        ((Account)cloner.clone).Name = cloneName;
+        Account toBeCloned = (Account) cloner.clone;
+        toBeCloned.Name = cloneName;   //change name
         Id clonedId = cloner.save();
         System.assertNotEquals(null, clonedId);
         System.assertNotEquals(acc.Id, clonedId);
 
         Account queriedClonedAccount = [SELECT Name, (SELECT FirstName, LastName FROM Contacts) FROM Account WHERE Id = :clonedId];
+
         System.assertEquals(cloneName, queriedClonedAccount.Name);
+        System.assertEquals(contactsByName.size(), queriedClonedAccount.Contacts.size());
         for(contact c : queriedClonedAccount.Contacts){
             Contact orgContact = contactsByName.get(c.FirstName + c.LastName);
             System.assertNotEquals(null, orgContact);
         }
-    }
-
-    @isTest static void testInvalidRelationship() {
-        Account acc = createAccount();
-        insert acc;
-
-        try{
-            SObjectDeepClone clone = new SObjectDeepClone(acc.Id, new Set<String>{'asdf'});
-        }catch(SObjectDeepClone.DeepCloneException e){
-            return;
-        }
-        system.assert(false, 'DeepCloneException should have been thrown');
     }
 
     //== OBJECT CREATORS... Might need to adjust to pass ORG validations

@@ -3,44 +3,33 @@
 //   - Not currently optimized for bulk use!
 //   See https://github.com/ChuckJonas/SObjectDeepClone for readme
 public with sharing class SObjectDeepClone {
-	private ChildRelationship[] relations;
+    private Map<String, ChildRelationshipProps> relationshipMap;
     private SObjectType type;
 
     //The SObject that will be cloned. Accessible so modications can be made prior to saving
     public SObject clone;
 
     /**
-      * @description Constructor.
-      * @param toCloneId
-      * @param relationshipsToClone
+      * @description Constructor to query object
+      * @param toCloneId: Id to clone.  All creatable fields will be pulled
+      * @param relationshipsToClone: Child Relationship names
       */
     public SObjectDeepClone(Id toCloneId, Set<String> relationshipsToClone) {
         type = toCloneId.getSObjectType();
-        relations = new ChildRelationship[]{};
-
-        Map<String, ChildRelationship> childRelationMap = new Map<String, ChildRelationship>();
-        for(ChildRelationship rel : type.getDescribe().getChildRelationships()){
-            String relName = rel.getRelationshipName();
-            if(relName != null){ //not sure why this would happen but it does
-                childRelationMap.put(rel.getRelationshipName().toUpperCase(), rel);
-            }
-        }
-
-        for(String relStr : relationshipsToClone){
-            relStr = relStr.toUpperCase();
-            if(childRelationMap.containsKey(relStr)){
-                relations.add(childRelationMap.get(relStr));
-            }else{
-                throw new DeepCloneException(
-                    'Child Relationship \'' + relStr + '\' does not exsist on ' + type.getDescribe().getName()
-                );
-            }
-        }
-
-        this.relations = relations;
-        clone = getSObject(toCloneId).clone(false);
+        mapStringsToRelations(relationshipsToClone);
+        retrieveSObject(toCloneId);
 	}
 
+    /**
+      * @description Constructor without object query.  Allows more control of cloning
+      * @param toClone: SObject to clone.  Must include all relevant information
+      * @param relationshipsToClone: Child Relationship names
+    */
+    public SObjectDeepClone(SObject toClone, Set<String> relationshipsToClone) {
+        type = toClone.getSObjectType();
+        mapStringsToRelations(relationshipsToClone);
+        this.clone = toClone;
+	}
 
     /**
       * @description Saves the Cloned SObject
@@ -53,11 +42,12 @@ public with sharing class SObjectDeepClone {
         try {
             insert clone;
 
-            for(ChildRelationship rel : relations){
+            for(String relationshipName : this.relationshipMap.keySet()){
                 SObject[] clonedChildren = new SObject[]{};
-                for(Sobject child : clone.getSObjects(rel.getRelationshipName())){
+                ChildRelationshipProps rel = this.relationshipMap.get(relationshipName);
+                for(Sobject child : clone.getSObjects(relationshipName)){
                     SObject childClone = child.clone(false);
-                    childClone.put(rel.getField(), clone.Id);
+                    childClone.put(rel.field, clone.Id);
                     clonedChildren.add(childClone);
                 }
                 insert clonedChildren;
@@ -71,15 +61,38 @@ public with sharing class SObjectDeepClone {
         return clone.Id;
     }
 
-    private SObject getSObject(Id toCloneId){
+
+    private void mapStringsToRelations(Set<String> relationshipStrings){
+        this.relationshipMap = new Map<string, ChildRelationshipProps>();
+        Map<String, ChildRelationship> childRelationMap = new Map<String, ChildRelationship>();
+        for(ChildRelationship rel : type.getDescribe().getChildRelationships()){
+            String relName = rel.getRelationshipName();
+            if(relName != null){ //not sure why this would happen but it does
+                childRelationMap.put(rel.getRelationshipName().toUpperCase(), rel);
+            }
+        }
+
+        for(String relStr : relationshipStrings){
+            relStr = relStr.toUpperCase();
+            if(childRelationMap.containsKey(relStr)){
+                ChildRelationship rel = childRelationMap.get(relStr);
+                relationshipMap.put(rel.getRelationshipName().toUpperCase(), new ChildRelationshipProps(rel));
+            }else{
+                throw new DeepCloneException(
+                    'Child Relationship \'' + relStr + '\' does not exsist on ' + type.getDescribe().getName()
+                );
+            }
+        }
+    }
+
+    private void retrieveSObject(Id toCloneId){
         // Get a map of field name and field token
         String[] selectFields = getCreatableFields(type);
 
         //subqueries
-        for(ChildRelationship relation : this.Relations){
-            SObjectType relationType = relation.getChildSObject();
-            String[] relationFields = getCreatableFields(relationType);
-            String relationName = relation.getRelationshipName();
+        for(String relationName : this.relationshipMap.keySet()){
+            ChildRelationshipProps rel = this.relationshipMap.get(relationName);
+            String[] relationFields = getCreatableFields(rel.sObjectType);
             if(relationFields.size() > 0){
                 selectFields.add('(' + buildQuery(relationFields, relationName, null) + ')');
             }
@@ -91,7 +104,7 @@ public with sharing class SObjectDeepClone {
             'ID = \''+String.escapeSingleQuotes(toCloneId)+'\''
         );
 
-        return (SObject) Database.query(qry);
+        this.clone = ((SObject) Database.query(qry)).clone(false);
     }
 
     private string buildQuery(String[] fields, String fromObj, string whereClause){
@@ -118,6 +131,16 @@ public with sharing class SObjectDeepClone {
             }
         }
         return selectFields;
+    }
+
+    //seralizable subset of ChildRelationship properties that we need
+    private class ChildRelationshipProps{
+        public SObjectType sObjectType;
+        public SObjectField field;
+        public ChildRelationshipProps(ChildRelationship rel){
+            this.sObjectType = rel.getChildSObject();
+            this.field = rel.getField();
+        }
     }
 
     public class DeepCloneException extends Exception {}
