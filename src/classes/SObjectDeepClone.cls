@@ -6,44 +6,56 @@ public with sharing class SObjectDeepClone {
 	private ChildRelationship[] relations;
     private SObjectType type;
 
-    public SObject thisObject;
+    //The SObject that will be cloned. Accessible so modications can be made prior to saving
+    public SObject clone;
 
+    /**
+      * @description Constructor.
+      * @param toCloneId
+      * @param relationshipsToClone
+      */
     public SObjectDeepClone(Id toCloneId, Set<String> relationshipsToClone) {
         type = toCloneId.getSObjectType();
         relations = new ChildRelationship[]{};
 
         Map<String, ChildRelationship> childRelationMap = new Map<String, ChildRelationship>();
         for(ChildRelationship rel : type.getDescribe().getChildRelationships()){
-            childRelationMap.put(rel.getRelationshipName(), rel);
+            String relName = rel.getRelationshipName();
+            if(relName != null){ //not sure why this would happen but it does
+                childRelationMap.put(rel.getRelationshipName().toUpperCase(), rel);
+            }
         }
 
-        for(String s : relationshipsToClone){
-            if(childRelationMap.containsKey(s)){
-                relations.add(childRelationMap.get(s));
+        for(String relStr : relationshipsToClone){
+            relStr = relStr.toUpperCase();
+            if(childRelationMap.containsKey(relStr)){
+                relations.add(childRelationMap.get(relStr));
             }else{
                 throw new DeepCloneException(
-                    'Child Relationship \'' + s + '\' does not exsist on ' + type.getDescribe().getName()
+                    'Child Relationship \'' + relStr + '\' does not exsist on ' + type.getDescribe().getName()
                 );
             }
         }
 
         this.relations = relations;
-        thisObject = getSObject(toCloneId);
+        clone = getSObject(toCloneId).clone(false);
 	}
 
-    public SObject save(){
+
+    /**
+      * @description Saves the Cloned SObject
+      * @return The Id of the cloned SObject
+      */
+    public Id save(){
         // setup the save point for rollback
         Savepoint sp = Database.setSavepoint();
 
-        SObject clone;
         try {
-            clone = thisObject.clone(false);
             insert clone;
 
             for(ChildRelationship rel : relations){
-                SObject[] clonedChildren = clone.getSObjects(rel.getRelationshipName());
-                clonedChildren.clear();
-                for(Sobject child : thisObject.getSObjects(rel.getRelationshipName())){
+                SObject[] clonedChildren = new SObject[]{};
+                for(Sobject child : clone.getSObjects(rel.getRelationshipName())){
                     SObject childClone = child.clone(false);
                     childClone.put(rel.getField(), clone.Id);
                     clonedChildren.add(childClone);
@@ -56,7 +68,7 @@ public with sharing class SObjectDeepClone {
             throw e;
         }
 
-        return clone;
+        return clone.Id;
     }
 
     private SObject getSObject(Id toCloneId){

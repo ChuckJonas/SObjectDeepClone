@@ -14,13 +14,15 @@ private class SObjectDeepCloneTest {
         insert contactsByName.values();
 
         //pass opportunities just to test query gen on multiple children
-        SObjectDeepClone clone = new SObjectDeepClone(acc.Id, new Set<String>{'contacts', 'opportunities'});
-        Id clonedId = clone.save();
+        SObjectDeepClone cloner = new SObjectDeepClone(acc.Id, new Set<String>{'contacts', 'opportunities'});
+        String cloneName = acc.name + ' Copy';
+        ((Account)cloner.clone).Name = cloneName;
+        Id clonedId = cloner.save();
         System.assertNotEquals(null, clonedId);
         System.assertNotEquals(acc.Id, clonedId);
 
         Account queriedClonedAccount = [SELECT Name, (SELECT FirstName, LastName FROM Contacts) FROM Account WHERE Id = :clonedId];
-        System.assertEquals(acc.Name, queriedClonedAccount.Name);
+        System.assertEquals(cloneName, queriedClonedAccount.Name);
         for(contact c : queriedClonedAccount.Contacts){
             Contact orgContact = contactsByName.get(c.FirstName + c.LastName);
             System.assertNotEquals(null, orgContact);
